@@ -3,52 +3,30 @@ const multer = require('multer');
 const path = require('path');
 const cors = require('cors');
 const XLSX = require('xlsx');
-const Database = require('better-sqlite3');
 const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ---------- Database setup ----------
-const DB_PATH = path.join(__dirname, '..', 'data', 'app.db');
-fs.mkdirSync(path.join(__dirname, '..', 'data'), { recursive: true });
-const db = new Database(DB_PATH);
+// ---------- JSON-file database ----------
+const DATA_DIR = path.join(__dirname, '..', 'data');
+const DB_FILE = path.join(DATA_DIR, 'db.json');
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS uploads (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    filename TEXT,
-    sheet_name TEXT,
-    row_count INTEGER,
-    uploaded_at TEXT DEFAULT (datetime('now'))
-  );
+function loadDB() {
+  if (!fs.existsSync(DB_FILE)) {
+    return { uploads: [], records: [], nextUploadId: 1, nextRecordId: 1 };
+  }
+  try {
+    return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+  } catch (e) {
+    return { uploads: [], records: [], nextUploadId: 1, nextRecordId: 1 };
+  }
+}
 
-  CREATE TABLE IF NOT EXISTS records (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    upload_id INTEGER,
-    demand_date TEXT,
-    branch_name TEXT,
-    zone_name TEXT,
-    cluster_name TEXT,
-    region_name TEXT,
-    unit_name TEXT,
-    sfo_handling_name TEXT,
-    total_centers REAL,
-    reached_on_time REAL,
-    finpage_yes REAL,
-    not_tagged REAL,
-    total_customers REAL,
-    a_count REAL,
-    b_count REAL,
-    c_count REAL,
-    ftod REAL,
-    FOREIGN KEY(upload_id) REFERENCES uploads(id)
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_records_date ON records(demand_date);
-  CREATE INDEX IF NOT EXISTS idx_records_zone ON records(zone_name);
-  CREATE INDEX IF NOT EXISTS idx_records_cluster ON records(cluster_name);
-`);
+function saveDB(db) {
+  fs.writeFileSync(DB_FILE, JSON.stringify(db));
+}
 
 // ---------- Middleware ----------
 app.use(cors());
@@ -64,7 +42,6 @@ function excelDateToISO(value) {
     return value.toISOString().slice(0, 10);
   }
   if (typeof value === 'number') {
-    // Excel serial date
     const d = XLSX.SSF.parse_date_code(value);
     if (!d) return null;
     const mm = String(d.m).padStart(2, '0');
@@ -83,9 +60,24 @@ function pickColumn(row, candidates) {
   return null;
 }
 
+function matchesFilter(r, { from, to, zone, cluster }) {
+  if (from && r.demand_date < from) return false;
+  if (to && r.demand_date > to) return false;
+  if (zone && r.zone_name !== zone) return false;
+  if (cluster && r.cluster_name !== cluster) return false;
+  return true;
+}
+
+function addPct(r) {
+  return {
+    ...r,
+    on_time_pct: r.total_centers ? Math.round((r.reached_on_time / r.total_centers) * 1000) / 10 : 0,
+    finpage_pct: r.total_centers ? Math.round((r.finpage_yes / r.total_centers) * 1000) / 10 : 0
+  };
+}
+
 // ---------- Routes ----------
 
-// Upload Excel and append/refresh data
 app.post('/api/upload', upload.single('file'), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
@@ -103,52 +95,47 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
       return res.status(400).json({ error: 'Selected sheet has no data rows' });
     }
 
-    const insertUpload = db.prepare(
-      `INSERT INTO uploads (filename, sheet_name, row_count) VALUES (?, ?, ?)`
-    );
-    const insertRecord = db.prepare(`
-      INSERT INTO records (
-        upload_id, demand_date, branch_name, zone_name, cluster_name, region_name,
-        unit_name, sfo_handling_name, total_centers, reached_on_time, finpage_yes,
-        not_tagged, total_customers, a_count, b_count, c_count, ftod
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    `);
-
+    const db = loadDB();
+    const uploadId = db.nextUploadId++;
     let inserted = 0;
-    const txn = db.transaction((dataRows) => {
-      const uploadResult = insertUpload.run(req.file.originalname, sheetName, dataRows.length);
-      const uploadId = uploadResult.lastInsertRowid;
 
-      for (const row of dataRows) {
-        const dateRaw = pickColumn(row, ['demand_date', 'Date', 'date']);
-        const isoDate = excelDateToISO(dateRaw);
-        if (!isoDate) continue; // skip rows without a usable date
+    for (const row of rows) {
+      const dateRaw = pickColumn(row, ['demand_date', 'Date', 'date']);
+      const isoDate = excelDateToISO(dateRaw);
+      if (!isoDate) continue;
 
-        insertRecord.run(
-          uploadId,
-          isoDate,
-          pickColumn(row, ['branch_name', 'Branch']),
-          pickColumn(row, ['zone_name', 'Zone']),
-          pickColumn(row, ['cluster_name', 'Cluster']),
-          pickColumn(row, ['region_name', 'Region']),
-          pickColumn(row, ['Unit Name', 'unit_name']),
-          pickColumn(row, ['sfo_handling_name', 'Handler']),
-          Number(pickColumn(row, ['total_centers'])) || 0,
-          Number(pickColumn(row, ['centers_reached_on_time_count', 'reached_on_time'])) || 0,
-          Number(pickColumn(row, ['finpage_yes_count', 'finpage_yes'])) || 0,
-          Number(pickColumn(row, ['Centers Not tagged', 'not_tagged'])) || 0,
-          Number(pickColumn(row, ['total_customers'])) || 0,
-          Number(pickColumn(row, ['A_count'])) || 0,
-          Number(pickColumn(row, ['B_count'])) || 0,
-          Number(pickColumn(row, ['C_count'])) || 0,
-          Number(pickColumn(row, ['FTOD'])) || 0
-        );
-        inserted++;
-      }
-      return uploadId;
+      db.records.push({
+        id: db.nextRecordId++,
+        upload_id: uploadId,
+        demand_date: isoDate,
+        branch_name: pickColumn(row, ['branch_name', 'Branch']),
+        zone_name: pickColumn(row, ['zone_name', 'Zone']),
+        cluster_name: pickColumn(row, ['cluster_name', 'Cluster']),
+        region_name: pickColumn(row, ['region_name', 'Region']),
+        unit_name: pickColumn(row, ['Unit Name', 'unit_name']),
+        sfo_handling_name: pickColumn(row, ['sfo_handling_name', 'Handler']),
+        total_centers: Number(pickColumn(row, ['total_centers'])) || 0,
+        reached_on_time: Number(pickColumn(row, ['centers_reached_on_time_count', 'reached_on_time'])) || 0,
+        finpage_yes: Number(pickColumn(row, ['finpage_yes_count', 'finpage_yes'])) || 0,
+        not_tagged: Number(pickColumn(row, ['Centers Not tagged', 'not_tagged'])) || 0,
+        total_customers: Number(pickColumn(row, ['total_customers'])) || 0,
+        a_count: Number(pickColumn(row, ['A_count'])) || 0,
+        b_count: Number(pickColumn(row, ['B_count'])) || 0,
+        c_count: Number(pickColumn(row, ['C_count'])) || 0,
+        ftod: Number(pickColumn(row, ['FTOD'])) || 0
+      });
+      inserted++;
+    }
+
+    db.uploads.push({
+      id: uploadId,
+      filename: req.file.originalname,
+      sheet_name: sheetName,
+      row_count: inserted,
+      uploaded_at: new Date().toISOString()
     });
 
-    const uploadId = txn(rows);
+    saveDB(db);
 
     res.json({
       success: true,
@@ -164,7 +151,6 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
   }
 });
 
-// List available sheet names for a file without committing it (preview)
 app.post('/api/preview-sheets', upload.single('file'), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
@@ -175,107 +161,76 @@ app.post('/api/preview-sheets', upload.single('file'), (req, res) => {
   }
 });
 
-// Summary endpoint with filters
 app.get('/api/summary', (req, res) => {
   try {
     const { from, to, zone, cluster } = req.query;
-    let where = ['1=1'];
-    let params = [];
+    const db = loadDB();
+    const filtered = db.records.filter(r => matchesFilter(r, { from, to, zone, cluster }));
 
-    if (from) { where.push('demand_date >= ?'); params.push(from); }
-    if (to) { where.push('demand_date <= ?'); params.push(to); }
-    if (zone) { where.push('zone_name = ?'); params.push(zone); }
-    if (cluster) { where.push('cluster_name = ?'); params.push(cluster); }
+    const sum = (arr, key) => arr.reduce((s, r) => s + (r[key] || 0), 0);
 
-    const whereClause = where.join(' AND ');
+    const totals = {
+      total_centers: sum(filtered, 'total_centers'),
+      reached_on_time: sum(filtered, 'reached_on_time'),
+      finpage_yes: sum(filtered, 'finpage_yes'),
+      not_tagged: sum(filtered, 'not_tagged'),
+      total_customers: sum(filtered, 'total_customers'),
+      row_count: filtered.length
+    };
 
-    const totals = db.prepare(`
-      SELECT
-        SUM(total_centers) AS total_centers,
-        SUM(reached_on_time) AS reached_on_time,
-        SUM(finpage_yes) AS finpage_yes,
-        SUM(not_tagged) AS not_tagged,
-        SUM(total_customers) AS total_customers,
-        COUNT(*) AS row_count
-      FROM records WHERE ${whereClause}
-    `).get(...params);
+    function groupBy(keys) {
+      const map = {};
+      for (const r of filtered) {
+        const k = keys.map(kk => r[kk]).join('|||');
+        if (!map[k]) {
+          const base = {};
+          keys.forEach(kk => base[kk] = r[kk]);
+          map[k] = { ...base, total_centers: 0, reached_on_time: 0, finpage_yes: 0, not_tagged: 0, total_customers: 0 };
+        }
+        map[k].total_centers += r.total_centers || 0;
+        map[k].reached_on_time += r.reached_on_time || 0;
+        map[k].finpage_yes += r.finpage_yes || 0;
+        map[k].not_tagged += r.not_tagged || 0;
+        map[k].total_customers += r.total_customers || 0;
+      }
+      return Object.values(map);
+    }
 
-    const byZone = db.prepare(`
-      SELECT zone_name,
-        SUM(total_centers) AS total_centers,
-        SUM(reached_on_time) AS reached_on_time,
-        SUM(finpage_yes) AS finpage_yes,
-        SUM(not_tagged) AS not_tagged,
-        SUM(total_customers) AS total_customers
-      FROM records WHERE ${whereClause}
-      GROUP BY zone_name
-      ORDER BY total_centers DESC
-    `).all(...params);
+    const byZone = groupBy(['zone_name']).sort((a, b) => b.total_centers - a.total_centers).map(addPct);
+    const byCluster = groupBy(['zone_name', 'cluster_name']).sort((a, b) => b.total_centers - a.total_centers).map(addPct);
+    const byDay = groupBy(['demand_date']).sort((a, b) => b.demand_date.localeCompare(a.demand_date)).map(addPct);
 
-    const byCluster = db.prepare(`
-      SELECT zone_name, cluster_name,
-        SUM(total_centers) AS total_centers,
-        SUM(reached_on_time) AS reached_on_time,
-        SUM(finpage_yes) AS finpage_yes,
-        SUM(total_customers) AS total_customers
-      FROM records WHERE ${whereClause}
-      GROUP BY zone_name, cluster_name
-      ORDER BY total_centers DESC
-    `).all(...params);
-
-    const byDay = db.prepare(`
-      SELECT demand_date,
-        SUM(total_centers) AS total_centers,
-        SUM(reached_on_time) AS reached_on_time,
-        SUM(finpage_yes) AS finpage_yes,
-        SUM(total_customers) AS total_customers
-      FROM records WHERE ${whereClause}
-      GROUP BY demand_date
-      ORDER BY demand_date DESC
-    `).all(...params);
-
-    const addPct = (r) => ({
-      ...r,
-      on_time_pct: r.total_centers ? Math.round((r.reached_on_time / r.total_centers) * 1000) / 10 : 0,
-      finpage_pct: r.total_centers ? Math.round((r.finpage_yes / r.total_centers) * 1000) / 10 : 0
-    });
-
-    res.json({
-      totals: addPct(totals || {}),
-      byZone: byZone.map(addPct),
-      byCluster: byCluster.map(addPct),
-      byDay: byDay.map(addPct)
-    });
+    res.json({ totals: addPct(totals), byZone, byCluster, byDay });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Filter options (zones, clusters, date bounds)
 app.get('/api/filters', (req, res) => {
   try {
-    const zones = db.prepare(`SELECT DISTINCT zone_name FROM records WHERE zone_name IS NOT NULL ORDER BY zone_name`).all().map(r => r.zone_name);
-    const clusters = db.prepare(`SELECT DISTINCT zone_name, cluster_name FROM records WHERE cluster_name IS NOT NULL ORDER BY cluster_name`).all();
-    const bounds = db.prepare(`SELECT MIN(demand_date) AS min_date, MAX(demand_date) AS max_date FROM records`).get();
+    const db = loadDB();
+    const zones = [...new Set(db.records.map(r => r.zone_name).filter(Boolean))].sort();
+    const clusterSet = {};
+    db.records.forEach(r => {
+      if (r.cluster_name) clusterSet[r.zone_name + '|||' + r.cluster_name] = { zone_name: r.zone_name, cluster_name: r.cluster_name };
+    });
+    const clusters = Object.values(clusterSet).sort((a, b) => a.cluster_name.localeCompare(b.cluster_name));
+    const dates = db.records.map(r => r.demand_date).filter(Boolean).sort();
+    const bounds = { min_date: dates[0] || null, max_date: dates[dates.length - 1] || null };
     res.json({ zones, clusters, bounds });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Download filtered data as CSV
 app.get('/api/download', (req, res) => {
   try {
     const { from, to, zone, cluster, format } = req.query;
-    let where = ['1=1'];
-    let params = [];
-    if (from) { where.push('demand_date >= ?'); params.push(from); }
-    if (to) { where.push('demand_date <= ?'); params.push(to); }
-    if (zone) { where.push('zone_name = ?'); params.push(zone); }
-    if (cluster) { where.push('cluster_name = ?'); params.push(cluster); }
-
-    const rows = db.prepare(`SELECT * FROM records WHERE ${where.join(' AND ')} ORDER BY demand_date`).all(...params);
+    const db = loadDB();
+    const rows = db.records
+      .filter(r => matchesFilter(r, { from, to, zone, cluster }))
+      .sort((a, b) => a.demand_date.localeCompare(b.demand_date));
 
     const ws = XLSX.utils.json_to_sheet(rows);
     if ((format || 'csv') === 'xlsx') {
@@ -296,30 +251,27 @@ app.get('/api/download', (req, res) => {
   }
 });
 
-// List upload history
 app.get('/api/uploads', (req, res) => {
-  const rows = db.prepare(`SELECT * FROM uploads ORDER BY uploaded_at DESC`).all();
-  res.json(rows);
+  const db = loadDB();
+  res.json(db.uploads.slice().sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at)));
 });
 
-// Delete an upload and its records
 app.delete('/api/uploads/:id', (req, res) => {
-  const id = req.params.id;
-  db.prepare(`DELETE FROM records WHERE upload_id = ?`).run(id);
-  db.prepare(`DELETE FROM uploads WHERE id = ?`).run(id);
+  const id = Number(req.params.id);
+  const db = loadDB();
+  db.records = db.records.filter(r => r.upload_id !== id);
+  db.uploads = db.uploads.filter(u => u.id !== id);
+  saveDB(db);
   res.json({ success: true });
 });
 
-// Clear all data
 app.delete('/api/clear-all', (req, res) => {
-  db.prepare(`DELETE FROM records`).run();
-  db.prepare(`DELETE FROM uploads`).run();
+  saveDB({ uploads: [], records: [], nextUploadId: 1, nextRecordId: 1 });
   res.json({ success: true });
 });
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
-// Fallback to index.html for SPA-style routing
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
