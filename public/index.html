@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Center Quality — Team Dashboard</title>
+<style>
+  :root{
+    --ink:#1b2430;
+    --paper:#f6f3ec;
+    --line:#d8d2c2;
+    --accent:#9a5b3f;
+    --accent-soft:#f0e3d8;
+    --good:#3f7a4a;
+    --warn:#a23b2e;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    --serif: "Iowan Old Style","Georgia",serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);padding:36px 20px 70px;min-height:100vh;}
+  .wrap{max-width:1100px;margin:0 auto;}
+  h1{font-size:2rem;margin:0 0 4px;letter-spacing:-0.01em;}
+  .sub{font-family:var(--mono);font-size:0.78rem;text-transform:uppercase;letter-spacing:.07em;color:#7a7363;margin-bottom:26px;}
+  .panel{background:#fffdf9;border:1px solid var(--line);border-radius:4px;padding:18px 20px;margin-bottom:22px;}
+  .panel .ptitle{font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:12px;}
+  .filterRow{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field label{font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:.05em;color:#9a8f7c;}
+  select, input[type=date]{
+    font-family:var(--mono);font-size:0.8rem;padding:8px 10px;
+    border:1px solid var(--line);border-radius:3px;background:#fff;color:var(--ink);
+    min-width:150px;
+  }
+  .btn{font-family:var(--mono);font-size:0.76rem;text-transform:uppercase;letter-spacing:.05em;
+    background:var(--ink);color:var(--paper);border:none;padding:9px 16px;border-radius:3px;cursor:pointer;}
+  .btn:hover{background:var(--accent);}
+  .btn.secondary{background:#fffdf9;color:var(--ink);border:1px solid var(--line);}
+  .btn.secondary:hover{background:var(--accent-soft);border-color:var(--accent);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  .dropzone{border:1.5px dashed var(--line);border-radius:4px;padding:28px 20px;text-align:center;background:#fffdf9;cursor:pointer;}
+  .dropzone.drag{border-color:var(--accent);background:var(--accent-soft);}
+  .dropzone p{margin:0 0 6px;font-size:0.95rem;}
+  .dropzone .hint{font-family:var(--mono);font-size:0.72rem;color:#9a8f7c;}
+  input[type=file]{display:none;}
+
+  .statRow{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:22px;}
+  .stat{background:#fffdf9;padding:16px;}
+  .stat .label{font-family:var(--mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:.05em;color:#9a8f7c;margin-bottom:6px;}
+  .stat .value{font-size:1.45rem;font-weight:600;}
+  .stat .value.good{color:var(--good);}
+  .stat .value.warn{color:var(--warn);}
+
+  h2{font-size:0.95rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--accent);
+     border-bottom:1px solid var(--line);padding-bottom:8px;margin:30px 0 12px;}
+  table{width:100%;border-collapse:collapse;font-size:0.83rem;background:#fffdf9;}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);}
+  th{font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:.04em;color:#7a7363;
+     position:sticky;top:0;background:#fffdf9;}
+  tr:hover td{background:var(--accent-soft);}
+  td.num{font-family:var(--mono);text-align:right;}
+  .tableWrap{overflow-x:auto;max-height:420px;overflow-y:auto;border:1px solid var(--line);}
+  .bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;width:80px;display:inline-block;vertical-align:middle;margin-right:8px;}
+  .bar > div{height:100%;background:var(--accent);}
+  .rowCountLabel{font-family:var(--mono);font-size:0.72rem;color:#9a8f7c;font-weight:normal;text-transform:none;letter-spacing:0;}
+  .msg{font-family:var(--mono);font-size:0.78rem;margin-top:10px;}
+  .msg.ok{color:var(--good);}
+  .msg.err{color:var(--warn);}
+  .uploadHistory{display:flex;flex-direction:column;gap:6px;margin-top:14px;}
+  .uploadItem{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);background:#fffdf9;border-radius:3px;padding:8px 12px;font-family:var(--mono);font-size:0.75rem;}
+  .uploadItem button{font-family:var(--mono);font-size:0.68rem;border:1px solid var(--line);background:#fff;padding:4px 8px;border-radius:3px;cursor:pointer;}
+  .uploadItem button:hover{background:#f7e3e0;border-color:var(--warn);color:var(--warn);}
+  .empty{font-family:var(--mono);font-size:0.78rem;color:#9a8f7c;padding:14px 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Center Quality — Team Dashboard</h1>
+  <div class="sub" id="subTitle">Loading…</div>
+
+  <div class="panel">
+    <div class="ptitle">Upload data</div>
+    <div class="dropzone" id="dropzone">
+      <p>Drop an Excel file here, or click to choose one</p>
+      <div class="hint">.xlsx · .xls — new uploads are added to the shared database, visible to your whole team</div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+    </div>
+    <div class="msg" id="uploadMsg"></div>
+    <div class="ptitle" style="margin-top:18px;">Upload history</div>
+    <div class="uploadHistory" id="uploadHistory"></div>
+  </div>
+
+  <div class="panel">
+    <div class="ptitle">Filters</div>
+    <div class="filterRow">
+      <div class="field"><label>From date</label><input type="date" id="dateFrom"></div>
+      <div class="field"><label>To date</label><input type="date" id="dateTo"></div>
+      <div class="field"><label>Zone</label><select id="zoneSelect"><option value="">All zones</option></select></div>
+      <div class="field"><label>Cluster</label><select id="clusterSelect"><option value="">All clusters</option></select></div>
+      <button class="btn secondary" id="clearFilters">Clear filters</button>
+    </div>
+  </div>
+
+  <div class="statRow" id="statRow"></div>
+
+  <h2>Zone performance <span class="rowCountLabel" id="zoneRowCount"></span></h2>
+  <div class="tableWrap">
+    <table>
+      <thead><tr>
+        <th>Zone</th><th>Total Centers</th><th>Reached On Time</th><th>On-Time %</th>
+        <th>Finpage Yes</th><th>Finpage %</th><th>Not Tagged</th><th>Customers</th>
+      </tr></thead>
+      <tbody id="zoneTableBody"></tbody>
+    </table>
+  </div>
+
+  <h2>Cluster detail <span class="rowCountLabel" id="clusterRowCount"></span></h2>
+  <div class="tableWrap">
+    <table>
+      <thead><tr>
+        <th>Zone</th><th>Cluster</th><th>Total Centers</th><th>Reached On Time</th>
+        <th>On-Time %</th><th>Finpage Yes</th><th>Finpage %</th><th>Customers</th>
+      </tr></thead>
+      <tbody id="clusterTableBody"></tbody>
+    </table>
+  </div>
+
+  <h2>Daily trend <span class="rowCountLabel" id="dailyRowCount"></span></h2>
+  <div class="tableWrap">
+    <table>
+      <thead><tr>
+        <th>Date</th><th>Total Centers</th><th>Reached On Time</th><th>On-Time %</th>
+        <th>Finpage Yes</th><th>Finpage %</th><th>Customers</th>
+      </tr></thead>
+      <tbody id="dailyTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="filterRow" style="margin-top:24px;">
+    <button class="btn" id="downloadXlsx">Download filtered data (.xlsx)</button>
+    <button class="btn secondary" id="downloadCsv">Download filtered data (.csv)</button>
+  </div>
+</div>
+
+<script>
+const API = '';
+let zoneFilter='', clusterFilter='', dateFrom='', dateTo='';
+
+const dateFromEl=document.getElementById('dateFrom');
+const dateToEl=document.getElementById('dateTo');
+const zoneSelect=document.getElementById('zoneSelect');
+const clusterSelect=document.getElementById('clusterSelect');
+const dropzone=document.getElementById('dropzone');
+const fileInput=document.getElementById('fileInput');
+const uploadMsg=document.getElementById('uploadMsg');
+
+function qs(params){
+  const u = new URLSearchParams();
+  for(const k in params) if(params[k]) u.append(k, params[k]);
+  return u.toString();
+}
+
+async function loadFilters(){
+  const res = await fetch(API + '/api/filters');
+  const data = await res.json();
+  zoneSelect.innerHTML = '<option value="">All zones</option>' + data.zones.map(z=>`<option value="${z}">${z}</option>`).join('');
+  updateClusterOptions(data.clusters);
+  if(data.bounds.min_date){
+    document.getElementById('subTitle').textContent = `Data range: ${data.bounds.min_date} to ${data.bounds.max_date}`;
+  } else {
+    document.getElementById('subTitle').textContent = 'No data yet — upload an Excel file to get started';
+  }
+  window._allClusters = data.clusters;
+}
+
+function updateClusterOptions(clusters){
+  const pool = zoneFilter ? clusters.filter(c=>c.zone_name===zoneFilter) : clusters;
+  const names = [...new Set(pool.map(c=>c.cluster_name))].sort();
+  clusterSelect.innerHTML = '<option value="">All clusters</option>' + names.map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+
+async function loadSummary(){
+  const params = { from: dateFrom, to: dateTo, zone: zoneFilter, cluster: clusterFilter };
+  const res = await fetch(API + '/api/summary?' + qs(params));
+  const data = await res.json();
+  render(data);
+}
+
+function pctColor(p){ return p>=70?'good':(p<55?'warn':''); }
+
+function render(data){
+  const t = data.totals || {};
+  document.getElementById('statRow').innerHTML = `
+    <div class="stat"><div class="label">Total Centers</div><div class="value">${(t.total_centers||0).toLocaleString()}</div></div>
+    <div class="stat"><div class="label">On-Time %</div><div class="value ${pctColor(t.on_time_pct||0)}">${t.on_time_pct||0}%</div></div>
+    <div class="stat"><div class="label">Finpage %</div><div class="value ${pctColor(t.finpage_pct||0)}">${t.finpage_pct||0}%</div></div>
+    <div class="stat"><div class="label">Not Tagged</div><div class="value">${(t.not_tagged||0).toLocaleString()}</div></div>
+    <div class="stat"><div class="label">Total Customers</div><div class="value">${(t.total_customers||0).toLocaleString()}</div></div>
+  `;
+
+  document.getElementById('zoneRowCount').textContent = '(' + data.byZone.length + ' zones)';
+  document.getElementById('zoneTableBody').innerHTML = data.byZone.map(r=>`
+    <tr>
+      <td>${r.zone_name||'—'}</td>
+      <td class="num">${(r.total_centers||0).toLocaleString()}</td>
+      <td class="num">${(r.reached_on_time||0).toLocaleString()}</td>
+      <td class="num"><span class="bar"><div style="width:${Math.min(r.on_time_pct,100)}%"></div></span>${r.on_time_pct}%</td>
+      <td class="num">${(r.finpage_yes||0).toLocaleString()}</td>
+      <td class="num">${r.finpage_pct}%</td>
+      <td class="num">${(r.not_tagged||0).toLocaleString()}</td>
+      <td class="num">${(r.total_customers||0).toLocaleString()}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="8" class="empty">No data for this filter</td></tr>';
+
+  document.getElementById('clusterRowCount').textContent = '(' + data.byCluster.length + ' clusters)';
