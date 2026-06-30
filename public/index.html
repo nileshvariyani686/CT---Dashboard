@@ -3,321 +3,1523 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Center Quality — Team Dashboard</title>
+<title>Svatantra — Center Quality CT Dashboard</title>
 <style>
-  :root{
-    --ink:#1b2430;
-    --paper:#f6f3ec;
-    --line:#d8d2c2;
-    --accent:#9a5b3f;
-    --accent-soft:#f0e3d8;
-    --good:#3f7a4a;
-    --warn:#a23b2e;
-    --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
-    --serif: "Iowan Old Style","Georgia",serif;
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);padding:36px 20px 70px;min-height:100vh;}
-  .wrap{max-width:1100px;margin:0 auto;}
-  h1{font-size:2rem;margin:0 0 4px;letter-spacing:-0.01em;}
-  .sub{font-family:var(--mono);font-size:0.78rem;text-transform:uppercase;letter-spacing:.07em;color:#7a7363;margin-bottom:26px;}
-  .panel{background:#fffdf9;border:1px solid var(--line);border-radius:4px;padding:18px 20px;margin-bottom:22px;}
-  .panel .ptitle{font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:12px;}
-  .filterRow{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;}
-  .field{display:flex;flex-direction:column;gap:5px;}
-  .field label{font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:.05em;color:#9a8f7c;}
-  select, input[type=date]{
-    font-family:var(--mono);font-size:0.8rem;padding:8px 10px;
-    border:1px solid var(--line);border-radius:3px;background:#fff;color:var(--ink);
-    min-width:150px;
-  }
-  .btn{font-family:var(--mono);font-size:0.76rem;text-transform:uppercase;letter-spacing:.05em;
-    background:var(--ink);color:var(--paper);border:none;padding:9px 16px;border-radius:3px;cursor:pointer;}
-  .btn:hover{background:var(--accent);}
-  .btn.secondary{background:#fffdf9;color:var(--ink);border:1px solid var(--line);}
-  .btn.secondary:hover{background:var(--accent-soft);border-color:var(--accent);}
-  .btn:disabled{opacity:.4;cursor:not-allowed;}
+/* ============================================================
+   Design tokens — Svatantra brand palette
+   Primary navy  : #1c3f6e   (logo swoosh)
+   Primary green : #3aab35   (logo figure + wordmark)
+   ============================================================ */
+:root {
+  --bg:        #eef2f7;
+  --nav:       #1c3f6e;
+  --accent:    #3aab35;
+  --amber:     #e07b39;
+  --red:       #c0392b;
+  --green:     #3aab35;
+  --white:     #ffffff;
+  --card:      #ffffff;
+  --border:    #d3dce8;
+  --text:      #1c3f6e;
+  --muted:     #6b7d95;
+  --shadow:    0 1px 6px rgba(28,63,110,0.10);
+  --font:      system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono:      "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+}
 
-  .dropzone{border:1.5px dashed var(--line);border-radius:4px;padding:28px 20px;text-align:center;background:#fffdf9;cursor:pointer;}
-  .dropzone.drag{border-color:var(--accent);background:var(--accent-soft);}
-  .dropzone p{margin:0 0 6px;font-size:0.95rem;}
-  .dropzone .hint{font-family:var(--mono);font-size:0.72rem;color:#9a8f7c;}
-  input[type=file]{display:none;}
+/* ============================================================
+   Reset / base
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  min-height: 100vh;
+}
+a { color: var(--accent); }
+button { cursor: pointer; }
+input, select, button { font-family: inherit; font-size: 14px; }
 
-  .statRow{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:22px;}
-  .stat{background:#fffdf9;padding:16px;}
-  .stat .label{font-family:var(--mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:.05em;color:#9a8f7c;margin-bottom:6px;}
-  .stat .value{font-size:1.45rem;font-weight:600;}
-  .stat .value.good{color:var(--good);}
-  .stat .value.warn{color:var(--warn);}
+/* ============================================================
+   Layout: nav + page
+   ============================================================ */
+#app-nav {
+  background: var(--nav);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 24px;
+  height: 60px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(28,63,110,0.30);
+}
+#app-nav .brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-right: 36px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+#app-nav .brand img {
+  height: 36px;
+  width: auto;
+  display: block;
+  /* white logo on dark nav */
+  filter: brightness(0) invert(1);
+}
+#app-nav .brand-divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(255,255,255,0.25);
+}
+#app-nav .brand-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255,255,255,0.90);
+  line-height: 1.2;
+}
+#app-nav .brand-label small {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.nav-tab {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.60);
+  padding: 0 18px;
+  height: 60px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border-bottom: 3px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.nav-tab:hover { color: rgba(255,255,255,0.90); }
+.nav-tab.active {
+  color: #fff;
+  border-bottom-color: #3aab35;
+}
 
-  h2{font-size:0.95rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--accent);
-     border-bottom:1px solid var(--line);padding-bottom:8px;margin:30px 0 12px;}
-  table{width:100%;border-collapse:collapse;font-size:0.83rem;background:#fffdf9;}
-  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);}
-  th{font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:.04em;color:#7a7363;
-     position:sticky;top:0;background:#fffdf9;}
-  tr:hover td{background:var(--accent-soft);}
-  td.num{font-family:var(--mono);text-align:right;}
-  .tableWrap{overflow-x:auto;max-height:420px;overflow-y:auto;border:1px solid var(--line);}
-  .bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;width:80px;display:inline-block;vertical-align:middle;margin-right:8px;}
-  .bar > div{height:100%;background:var(--accent);}
-  .rowCountLabel{font-family:var(--mono);font-size:0.72rem;color:#9a8f7c;font-weight:normal;text-transform:none;letter-spacing:0;}
-  .msg{font-family:var(--mono);font-size:0.78rem;margin-top:10px;}
-  .msg.ok{color:var(--good);}
-  .msg.err{color:var(--warn);}
-  .uploadHistory{display:flex;flex-direction:column;gap:6px;margin-top:14px;}
-  .uploadItem{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);background:#fffdf9;border-radius:3px;padding:8px 12px;font-family:var(--mono);font-size:0.75rem;}
-  .uploadItem button{font-family:var(--mono);font-size:0.68rem;border:1px solid var(--line);background:#fff;padding:4px 8px;border-radius:3px;cursor:pointer;}
-  .uploadItem button:hover{background:#f7e3e0;border-color:var(--warn);color:var(--warn);}
-  .empty{font-family:var(--mono);font-size:0.78rem;color:#9a8f7c;padding:14px 0;}
+#page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+}
+
+/* ============================================================
+   Cards
+   ============================================================ */
+.card {
+  background: var(--card);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--nav);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 16px;
+}
+
+/* ============================================================
+   Tabs (content panels)
+   ============================================================ */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ============================================================
+   Filter bar
+   ============================================================ */
+.filter-bar {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.filter-group label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.filter-group input[type="date"],
+.filter-group select {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 7px 10px;
+  background: #fff;
+  color: var(--text);
+  min-width: 140px;
+  height: 34px;
+}
+.filter-group input[type="date"]:focus,
+.filter-group select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 5px;
+  padding: 7px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  transition: opacity 0.15s;
+  height: 34px;
+}
+.btn:hover { opacity: 0.88; }
+.btn:active { opacity: 0.75; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary  { background: var(--accent); color: #fff; }
+.btn-danger   { background: var(--red);    color: #fff; }
+.btn-outline  { background: transparent; color: var(--nav); border: 1px solid var(--border); }
+.btn-outline:hover { background: var(--bg); }
+.btn-nav      { background: var(--nav);    color: #fff; }
+.btn-sm       { padding: 4px 10px; height: 28px; font-size: 12px; }
+
+/* ============================================================
+   Auth — login form
+   ============================================================ */
+#login-panel {
+  max-width: 380px;
+  margin: 40px auto 0;
+}
+#login-panel .login-logo {
+  text-align: center;
+  margin-bottom: 28px;
+}
+#login-panel .login-logo img {
+  height: 52px;
+  width: auto;
+}
+.login-card {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 24px rgba(28,63,110,0.12);
+  padding: 32px 36px;
+}
+.login-card h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--nav);
+}
+.login-card .login-subtitle {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 24px;
+}
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 16px;
+}
+.login-field label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.login-field input {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: 14px;
+  color: var(--text);
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+}
+.login-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(58,171,53,0.15);
+}
+.btn-login {
+  width: 100%;
+  justify-content: center;
+  height: 40px;
+  font-size: 14px;
+  margin-top: 8px;
+  border-radius: 6px;
+}
+.login-error {
+  display: none;
+  background: #fdecea;
+  color: #8b1b1b;
+  border: 1px solid #f5a8a1;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-top: 12px;
+}
+.login-error.show { display: block; }
+
+/* Auth badge in nav */
+#auth-badge {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  padding-right: 4px;
+}
+#auth-badge .auth-user {
+  font-size: 12px;
+  color: rgba(255,255,255,0.75);
+}
+#auth-badge .auth-user strong {
+  color: #fff;
+}
+.btn-logout {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.85);
+  border-radius: 5px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-logout:hover { background: rgba(255,255,255,0.22); }
+
+/* ============================================================
+   Upload zone
+   ============================================================ */
+#drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 48px 32px;
+  text-align: center;
+  background: #f5f8fc;
+  transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
+  user-select: none;
+}
+#drop-zone.drag-over {
+  border-color: var(--accent);
+  background: #edf8ec;
+}
+#drop-zone .dz-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+  display: block;
+  color: var(--muted);
+}
+#drop-zone .dz-primary {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--nav);
+  margin: 0 0 6px;
+}
+#drop-zone .dz-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+}
+#file-input { display: none; }
+#upload-file-info {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  font-size: 13px;
+}
+#upload-file-name {
+  font-weight: 600;
+  color: var(--nav);
+}
+
+/* ============================================================
+   Alerts / messages
+   ============================================================ */
+.alert {
+  display: none;
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-size: 13px;
+  margin-top: 14px;
+}
+.alert.show { display: block; }
+.alert-success { background: #e6f5e6; color: #1a5c1a; border: 1px solid #8fd08f; }
+.alert-error   { background: #fdecea; color: #8b1b1b; border: 1px solid #f5a8a1; }
+
+/* ============================================================
+   Spinner
+   ============================================================ */
+.spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+}
+.spinner-dark {
+  border-color: rgba(0,0,0,0.1);
+  border-top-color: var(--accent);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-row td {
+  text-align: center;
+  padding: 32px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ============================================================
+   Upload history table
+   ============================================================ */
+.upload-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.upload-history-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  padding: 8px 12px;
+  border-bottom: 2px solid var(--border);
+}
+.upload-history-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.upload-history-table tr:last-child td { border-bottom: none; }
+.upload-history-table .dates-cell {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  max-width: 260px;
+}
+
+/* ============================================================
+   Summary table
+   ============================================================ */
+.table-wrap {
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 820px;
+}
+.summary-table th {
+  background: #1c3f6e;
+  color: rgba(255,255,255,0.90);
+  text-align: right;
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.summary-table th:first-child { text-align: left; }
+.summary-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+.summary-table td.entity-cell { text-align: left; }
+.summary-table tr:last-child td { border-bottom: none; }
+
+/* Row level styles */
+.summary-table tr.level-total td {
+  background: #1c3f6e;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+}
+.summary-table tr.level-zone td {
+  background: #dce8f5;
+  font-weight: 700;
+  font-size: 13px;
+  color: #1c3f6e;
+}
+.summary-table tr.level-cluster td {
+  background: #edf2f8;
+  font-weight: 600;
+}
+.summary-table tr.level-region td { background: #f7f9fc; }
+.summary-table tr.level-unit td {
+  background: #fff;
+  font-size: 12px;
+}
+.summary-table tr.level-branch td {
+  background: #fafcff;
+  font-size: 11px;
+  color: var(--muted);
+}
+.summary-table tr.hidden-branch { display: none; }
+
+/* Entity cell indentation */
+.summary-table .entity-cell.indent-0 { padding-left: 12px; }
+.summary-table .entity-cell.indent-1 { padding-left: 20px; }
+.summary-table .entity-cell.indent-2 { padding-left: 36px; }
+.summary-table .entity-cell.indent-3 { padding-left: 52px; }
+.summary-table .entity-cell.indent-4 { padding-left: 68px; }
+
+/* Colored % cells */
+.pct-green { background: #3aab35 !important; color: #fff !important; font-weight: 600; }
+.pct-amber { background: #e07b39 !important; color: #fff !important; font-weight: 600; }
+.pct-red   { background: #c0392b !important; color: #fff !important; font-weight: 600; }
+
+/* Override on total row — keep the dark background but apply text color */
+.summary-table tr.level-total td.pct-green { background: #3aab35 !important; }
+.summary-table tr.level-total td.pct-amber { background: #e07b39 !important; }
+.summary-table tr.level-total td.pct-red   { background: #c0392b !important; }
+
+/* ============================================================
+   Empty state
+   ============================================================ */
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--muted);
+}
+.empty-state p { margin: 8px 0 0; font-size: 13px; }
+
+/* ============================================================
+   Toolbar row (above tables)
+   ============================================================ */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.toolbar-left, .toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ============================================================
+   Daily Pivot table
+   ============================================================ */
+.pivot-table-wrap {
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  max-width: 100%;
+}
+.pivot-table {
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 500px;
+}
+.pivot-table th, .pivot-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.pivot-table th {
+  background: #1c3f6e;
+  color: rgba(255,255,255,0.90);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.pivot-table th.entity-col {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  z-index: 3;
+}
+.pivot-table td.entity-col {
+  background: inherit;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  border-right: 2px solid var(--border);
+  min-width: 200px;
+}
+.pivot-table td { text-align: center; }
+.pivot-table tr:last-child td { border-bottom: none; }
+.pivot-table tr.level-total td { background: #1c3f6e; color: #fff; font-weight: 700; }
+.pivot-table tr.level-total td.entity-col { background: #1c3f6e; }
+.pivot-table tr.level-zone  td { background: #dce8f5; font-weight: 700; color: #1c3f6e; }
+.pivot-table tr.level-zone  td.entity-col { background: #dce8f5; }
+.pivot-table tr.level-cluster td { background: #edf2f8; font-weight: 600; }
+.pivot-table tr.level-cluster td.entity-col { background: #edf2f8; }
+.pivot-table td.pct-green { background: #3aab35 !important; color: #fff !important; }
+.pivot-table td.pct-amber { background: #e07b39 !important; color: #fff !important; }
+.pivot-table td.pct-red   { background: #c0392b !important; color: #fff !important; }
+.pivot-table td.null-cell { color: var(--border); }
+
+/* Compare mode stacked cells */
+.compare-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.compare-cell .cline { font-size: 11px; }
+
+/* Metric selector */
+.metric-radio-group {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.metric-radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border-right: 1px solid var(--border);
+  transition: background 0.15s;
+  user-select: none;
+}
+.metric-radio-group label:last-child { border-right: none; }
+.metric-radio-group input[type="radio"] { display: none; }
+.metric-radio-group label:has(input:checked) {
+  background: #1c3f6e;
+  color: #fff;
+}
+.metric-radio-group label:hover:not(:has(input:checked)) {
+  background: var(--bg);
+}
+
+/* ============================================================
+   Page section header
+   ============================================================ */
+.section-header {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--nav);
+  margin: 0 0 4px;
+}
+.section-subtitle {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 20px;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 680px) {
+  #app-nav { padding: 0 12px; }
+  #page    { padding: 16px 12px 40px; }
+  .nav-tab { padding: 0 10px; font-size: 12px; }
+  .card    { padding: 16px; }
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>Center Quality — Team Dashboard</h1>
-  <div class="sub" id="subTitle">Loading…</div>
 
-  <div class="panel">
-    <div class="ptitle">Upload data</div>
-    <div class="dropzone" id="dropzone">
-      <p>Drop an Excel file here, or click to choose one</p>
-      <div class="hint">.xlsx · .xls — new uploads are added to the shared database, visible to your whole team</div>
-      <input type="file" id="fileInput" accept=".xlsx,.xls">
-    </div>
-    <div class="msg" id="uploadMsg"></div>
-    <div class="ptitle" style="margin-top:18px;">Upload history</div>
-    <div class="uploadHistory" id="uploadHistory"></div>
-  </div>
-
-  <div class="panel">
-    <div class="ptitle">Filters</div>
-    <div class="filterRow">
-      <div class="field"><label>From date</label><input type="date" id="dateFrom"></div>
-      <div class="field"><label>To date</label><input type="date" id="dateTo"></div>
-      <div class="field"><label>Zone</label><select id="zoneSelect"><option value="">All zones</option></select></div>
-      <div class="field"><label>Cluster</label><select id="clusterSelect"><option value="">All clusters</option></select></div>
-      <button class="btn secondary" id="clearFilters">Clear filters</button>
+<!-- ============================================================
+     Navigation
+     ============================================================ -->
+<nav id="app-nav">
+  <div class="brand">
+    <img src="/logo.png" alt="Svatantra">
+    <div class="brand-divider"></div>
+    <div class="brand-label">
+      Center Quality
+      <small>CT Dashboard</small>
     </div>
   </div>
+  <button class="nav-tab active" data-tab="upload">&#8682; Upload</button>
+  <button class="nav-tab"        data-tab="summary">CT Summary</button>
+  <button class="nav-tab"        data-tab="pivot">Daily Pivot</button>
 
-  <div class="statRow" id="statRow"></div>
-
-  <h2>Zone performance <span class="rowCountLabel" id="zoneRowCount"></span></h2>
-  <div class="tableWrap">
-    <table>
-      <thead><tr>
-        <th>Zone</th><th>Total Centers</th><th>Reached On Time</th><th>On-Time %</th>
-        <th>Finpage Yes</th><th>Finpage %</th><th>Not Tagged</th><th>Customers</th>
-      </tr></thead>
-      <tbody id="zoneTableBody"></tbody>
-    </table>
+  <div id="auth-badge">
+    <span class="auth-user">Logged in as <strong id="auth-name"></strong></span>
+    <button class="btn-logout" id="logout-btn">Log out</button>
   </div>
+</nav>
 
-  <h2>Cluster detail <span class="rowCountLabel" id="clusterRowCount"></span></h2>
-  <div class="tableWrap">
-    <table>
-      <thead><tr>
-        <th>Zone</th><th>Cluster</th><th>Total Centers</th><th>Reached On Time</th>
-        <th>On-Time %</th><th>Finpage Yes</th><th>Finpage %</th><th>Customers</th>
-      </tr></thead>
-      <tbody id="clusterTableBody"></tbody>
-    </table>
-  </div>
+<!-- ============================================================
+     Page content
+     ============================================================ -->
+<div id="page">
 
-  <h2>Daily trend <span class="rowCountLabel" id="dailyRowCount"></span></h2>
-  <div class="tableWrap">
-    <table>
-      <thead><tr>
-        <th>Date</th><th>Total Centers</th><th>Reached On Time</th><th>On-Time %</th>
-        <th>Finpage Yes</th><th>Finpage %</th><th>Customers</th>
-      </tr></thead>
-      <tbody id="dailyTableBody"></tbody>
-    </table>
-  </div>
+  <!-- ========================================================
+       TAB 1 — Upload
+       ======================================================== -->
+  <div id="tab-upload" class="tab-panel active">
 
-  <div class="filterRow" style="margin-top:24px;">
-    <button class="btn" id="downloadXlsx">Download filtered data (.xlsx)</button>
-    <button class="btn secondary" id="downloadCsv">Download filtered data (.csv)</button>
-  </div>
-</div>
+    <!-- ---- Login panel (shown when not authenticated) ---- -->
+    <div id="login-panel">
+      <div class="login-logo">
+        <img src="/logo.png" alt="Svatantra">
+      </div>
+      <div class="login-card">
+        <h2>Admin Sign In</h2>
+        <p class="login-subtitle">Only authorised users can upload or delete data.</p>
+        <div class="login-field">
+          <label>Username</label>
+          <input type="text" id="login-username" placeholder="username" autocomplete="username">
+        </div>
+        <div class="login-field">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary btn-login" id="login-btn">Sign In</button>
+        <div class="login-error" id="login-error"></div>
+      </div>
+    </div>
 
+    <!-- ---- Upload panel (shown when authenticated) ---- -->
+    <div id="upload-panel" style="display:none">
+    <p class="section-header">Upload Data</p>
+    <p class="section-subtitle">Upload an Excel (.xlsx) file containing the SFO-wise Summary sheet.</p>
+
+    <div class="card">
+      <div id="drop-zone">
+        <span class="dz-icon">&#8682;</span>
+        <p class="dz-primary">Drop .xlsx file here or click to browse</p>
+        <p class="dz-hint">Supported formats: .xlsx &nbsp;|&nbsp; Only the SFO-wise Summary sheet will be read</p>
+      </div>
+      <input type="file" id="file-input" accept=".xlsx,.xls,.numbers">
+
+      <div id="upload-file-info">
+        <span id="upload-file-name"></span>
+        <button class="btn btn-primary" id="upload-btn" disabled>
+          Upload
+        </button>
+      </div>
+
+      <div class="alert alert-success" id="upload-success"></div>
+      <div class="alert alert-error"   id="upload-error"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Upload History</div>
+      <div id="upload-history-wrap">
+        <table class="upload-history-table">
+          <thead>
+            <tr>
+              <th>Filename</th>
+              <th>Uploaded At</th>
+              <th>Dates Covered</th>
+              <th style="text-align:right">Records</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="upload-history-body">
+            <tr><td colspan="5" style="text-align:center;padding:24px;color:var(--muted)">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    </div><!-- /upload-panel -->
+  </div><!-- /tab-upload -->
+
+  <!-- ========================================================
+       TAB 2 — CT Summary
+       ======================================================== -->
+  <div id="tab-summary" class="tab-panel">
+    <p class="section-header">CT Summary</p>
+    <p class="section-subtitle">Hierarchical view: Zone &rarr; Cluster &rarr; Region &rarr; Unit &rarr; Branch</p>
+
+    <!-- Filter bar -->
+    <div class="card">
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label>From</label>
+          <input type="date" id="s-date-from">
+        </div>
+        <div class="filter-group">
+          <label>To</label>
+          <input type="date" id="s-date-to">
+        </div>
+        <div class="filter-group">
+          <label>Zone</label>
+          <select id="s-zone">
+            <option value="">All Zones</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="s-apply-btn">Apply Filters</button>
+      </div>
+    </div>
+
+    <!-- Table toolbar -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <span id="s-row-count" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn btn-outline btn-sm" id="toggle-branches-btn">Show Branches</button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table class="summary-table">
+        <thead>
+          <tr>
+            <th style="text-align:left;min-width:220px">Entity</th>
+            <th>Centers</th>
+            <th>On-Time %</th>
+            <th>Finpage %</th>
+            <th>Not Tagged %</th>
+            <th>A%</th>
+            <th>B%</th>
+            <th>C%</th>
+            <th>FTOD Count</th>
+          </tr>
+        </thead>
+        <tbody id="summary-tbody">
+          <tr class="loading-row"><td colspan="9"><span class="spinner spinner-dark"></span> Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div><!-- /tab-summary -->
+
+  <!-- ========================================================
+       TAB 3 — Daily Pivot
+       ======================================================== -->
+  <div id="tab-pivot" class="tab-panel">
+    <p class="section-header">Daily Pivot</p>
+    <p class="section-subtitle">Date-by-date breakdown by zone and cluster</p>
+
+    <!-- Filter bar -->
+    <div class="card">
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label>From</label>
+          <input type="date" id="p-date-from">
+        </div>
+        <div class="filter-group">
+          <label>To</label>
+          <input type="date" id="p-date-to">
+        </div>
+        <div class="filter-group">
+          <label>Zone</label>
+          <select id="p-zone">
+            <option value="">All Zones</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Cluster</label>
+          <select id="p-cluster">
+            <option value="">All Clusters</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="p-apply-btn">Apply Filters</button>
+      </div>
+    </div>
+
+    <!-- Metric selector + Compare mode -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="metric-radio-group" id="metric-selector">
+          <label><input type="radio" name="pivot-metric" value="on_time_pct" checked> On-Time %</label>
+          <label><input type="radio" name="pivot-metric" value="finpage_pct"> Finpage %</label>
+          <label><input type="radio" name="pivot-metric" value="not_tagged_pct"> Not Tagged %</label>
+          <label><input type="radio" name="pivot-metric" value="customers"> Center Count</label>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="compare-mode-chk"> Compare Mode
+        </label>
+      </div>
+    </div>
+
+    <!-- Pivot table -->
+    <div class="pivot-table-wrap">
+      <table class="pivot-table" id="pivot-table">
+        <thead id="pivot-thead"></thead>
+        <tbody id="pivot-tbody">
+          <tr class="loading-row"><td colspan="2"><span class="spinner spinner-dark"></span> Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div><!-- /tab-pivot -->
+
+</div><!-- /page -->
+
+<!-- ============================================================
+     JavaScript
+     ============================================================ -->
 <script>
-const API = '';
-let zoneFilter='', clusterFilter='', dateFrom='', dateTo='';
+'use strict';
 
-const dateFromEl=document.getElementById('dateFrom');
-const dateToEl=document.getElementById('dateTo');
-const zoneSelect=document.getElementById('zoneSelect');
-const clusterSelect=document.getElementById('clusterSelect');
-const dropzone=document.getElementById('dropzone');
-const fileInput=document.getElementById('fileInput');
-const uploadMsg=document.getElementById('uploadMsg');
+// ============================================================
+// State
+// ============================================================
+const state = {
+  filters: { dates: [], zones: [], clusters: [], regions: [], units: [] },
+  summaryRows: [],
+  pivotData: { dates: [], rows: [] },
+  showBranches: false,
+  pivotMetric: 'on_time_pct',
+  compareMode: false,
+  summaryFilters: { dateFrom: '', dateTo: '', zone: '' },
+  pivotFilters:   { dateFrom: '', dateTo: '', zone: '', cluster: '' },
+  auth: { token: null, user: null },
+};
 
-function qs(params){
+// ============================================================
+// Utility
+// ============================================================
+function qs(id)  { return document.getElementById(id); }
+function qsa(sel, ctx) { return (ctx || document).querySelectorAll(sel); }
+
+function buildQuery(params) {
   const u = new URLSearchParams();
-  for(const k in params) if(params[k]) u.append(k, params[k]);
-  return u.toString();
-}
-
-async function loadFilters(){
-  const res = await fetch(API + '/api/filters');
-  const data = await res.json();
-  zoneSelect.innerHTML = '<option value="">All zones</option>' + data.zones.map(z=>`<option value="${z}">${z}</option>`).join('');
-  updateClusterOptions(data.clusters);
-  if(data.bounds.min_date){
-    document.getElementById('subTitle').textContent = `Data range: ${data.bounds.min_date} to ${data.bounds.max_date}`;
-  } else {
-    document.getElementById('subTitle').textContent = 'No data yet — upload an Excel file to get started';
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== null && v !== undefined && v !== '') u.set(k, v);
   }
-  window._allClusters = data.clusters;
+  const s = u.toString();
+  return s ? '?' + s : '';
 }
 
-function updateClusterOptions(clusters){
-  const pool = zoneFilter ? clusters.filter(c=>c.zone_name===zoneFilter) : clusters;
-  const names = [...new Set(pool.map(c=>c.cluster_name))].sort();
-  clusterSelect.innerHTML = '<option value="">All clusters</option>' + names.map(c=>`<option value="${c}">${c}</option>`).join('');
-}
-
-async function loadSummary(){
-  const params = { from: dateFrom, to: dateTo, zone: zoneFilter, cluster: clusterFilter };
-  const res = await fetch(API + '/api/summary?' + qs(params));
-  const data = await res.json();
-  render(data);
-}
-
-function pctColor(p){ return p>=70?'good':(p<55?'warn':''); }
-
-function render(data){
-  const t = data.totals || {};
-  document.getElementById('statRow').innerHTML = `
-    <div class="stat"><div class="label">Total Centers</div><div class="value">${(t.total_centers||0).toLocaleString()}</div></div>
-    <div class="stat"><div class="label">On-Time %</div><div class="value ${pctColor(t.on_time_pct||0)}">${t.on_time_pct||0}%</div></div>
-    <div class="stat"><div class="label">Finpage %</div><div class="value ${pctColor(t.finpage_pct||0)}">${t.finpage_pct||0}%</div></div>
-    <div class="stat"><div class="label">Not Tagged</div><div class="value">${(t.not_tagged||0).toLocaleString()}</div></div>
-    <div class="stat"><div class="label">Total Customers</div><div class="value">${(t.total_customers||0).toLocaleString()}</div></div>
-  `;
-
-  document.getElementById('zoneRowCount').textContent = '(' + data.byZone.length + ' zones)';
-  document.getElementById('zoneTableBody').innerHTML = data.byZone.map(r=>`
-    <tr>
-      <td>${r.zone_name||'—'}</td>
-      <td class="num">${(r.total_centers||0).toLocaleString()}</td>
-      <td class="num">${(r.reached_on_time||0).toLocaleString()}</td>
-      <td class="num"><span class="bar"><div style="width:${Math.min(r.on_time_pct,100)}%"></div></span>${r.on_time_pct}%</td>
-      <td class="num">${(r.finpage_yes||0).toLocaleString()}</td>
-      <td class="num">${r.finpage_pct}%</td>
-      <td class="num">${(r.not_tagged||0).toLocaleString()}</td>
-      <td class="num">${(r.total_customers||0).toLocaleString()}</td>
-    </tr>
-  `).join('') || '<tr><td colspan="8" class="empty">No data for this filter</td></tr>';
-
-  document.getElementById('clusterRowCount').textContent = '(' + data.byCluster.length + ' clusters)';
-  document.getElementById('clusterTableBody').innerHTML = data.byCluster.map(r=>`
-    <tr>
-      <td>${r.zone_name||'—'}</td>
-      <td>${r.cluster_name||'—'}</td>
-      <td class="num">${(r.total_centers||0).toLocaleString()}</td>
-      <td class="num">${(r.reached_on_time||0).toLocaleString()}</td>
-      <td class="num">${r.on_time_pct}%</td>
-      <td class="num">${(r.finpage_yes||0).toLocaleString()}</td>
-      <td class="num">${r.finpage_pct}%</td>
-      <td class="num">${(r.total_customers||0).toLocaleString()}</td>
-    </tr>
-  `).join('') || '<tr><td colspan="8" class="empty">No data for this filter</td></tr>';
-
-  document.getElementById('dailyRowCount').textContent = '(' + data.byDay.length + ' days)';
-  document.getElementById('dailyTableBody').innerHTML = data.byDay.map(r=>`
-    <tr>
-      <td>${r.demand_date}</td>
-      <td class="num">${(r.total_centers||0).toLocaleString()}</td>
-      <td class="num">${(r.reached_on_time||0).toLocaleString()}</td>
-      <td class="num">${r.on_time_pct}%</td>
-      <td class="num">${(r.finpage_yes||0).toLocaleString()}</td>
-      <td class="num">${r.finpage_pct}%</td>
-      <td class="num">${(r.total_customers||0).toLocaleString()}</td>
-    </tr>
-  `).join('') || '<tr><td colspan="7" class="empty">No data for this filter</td></tr>';
-}
-
-async function loadUploadHistory(){
-  const res = await fetch(API + '/api/uploads');
-  const rows = await res.json();
-  const el = document.getElementById('uploadHistory');
-  if(!rows.length){
-    el.innerHTML = '<div class="empty">No uploads yet</div>';
-    return;
+async function apiFetch(url, opts = {}) {
+  // Attach auth token to every request if we have one
+  if (state.auth.token) {
+    opts.headers = { ...(opts.headers || {}), 'Authorization': `Bearer ${state.auth.token}` };
   }
-  el.innerHTML = rows.map(r => `
-    <div class="uploadItem">
-      <span>${r.filename} — ${r.sheet_name} — ${r.row_count} rows — ${new Date(r.uploaded_at).toLocaleString()}</span>
-      <button data-id="${r.id}">Delete</button>
-    </div>
-  `).join('');
-  el.querySelectorAll('button').forEach(b => {
-    b.onclick = async () => {
-      await fetch(API + '/api/uploads/' + b.dataset.id, { method: 'DELETE' });
-      await refreshAll();
-    };
+  const res  = await fetch(url, opts);
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = { error: text }; }
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+function fmtPct(val) {
+  if (val === null || val === undefined) return '-';
+  return (val * 100).toFixed(1) + '%';
+}
+function fmtNum(val) {
+  if (val === null || val === undefined) return '-';
+  return Number(val).toLocaleString();
+}
+function fmtDate(isoDate) {
+  // "2026-06-29" -> "29-Jun"
+  if (!isoDate) return '';
+  const [y, m, d] = isoDate.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${d}-${months[parseInt(m,10)-1]}`;
+}
+function fmtTs(isoTs) {
+  const d = new Date(isoTs);
+  return d.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+/**
+ * Returns CSS class for an on_time or finpage percentage (0-1 float).
+ * reversed=true: low is green (for not_tagged).
+ */
+function pctClass(val, reversed) {
+  if (val === null || val === undefined) return '';
+  if (reversed) {
+    if (val <= 0.05) return 'pct-green';
+    if (val <= 0.15) return 'pct-amber';
+    return 'pct-red';
+  }
+  if (val >= 0.70) return 'pct-green';
+  if (val >= 0.55) return 'pct-amber';
+  return 'pct-red';
+}
+
+function capitalize(s) {
+  if (!s) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// ============================================================
+// Tab navigation
+// ============================================================
+function initTabs() {
+  qsa('.nav-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      qsa('.nav-tab').forEach(b => b.classList.remove('active'));
+      qsa('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      qs(`tab-${btn.dataset.tab}`).classList.add('active');
+    });
   });
 }
 
-async function refreshAll(){
-  await loadFilters();
-  await loadSummary();
-  await loadUploadHistory();
-}
-
-// ---- filter wiring ----
-zoneSelect.onchange = () => { zoneFilter = zoneSelect.value; updateClusterOptions(window._allClusters||[]); clusterFilter=''; clusterSelect.value=''; loadSummary(); };
-clusterSelect.onchange = () => { clusterFilter = clusterSelect.value; loadSummary(); };
-dateFromEl.onchange = () => { dateFrom = dateFromEl.value; loadSummary(); };
-dateToEl.onchange = () => { dateTo = dateToEl.value; loadSummary(); };
-document.getElementById('clearFilters').onclick = () => {
-  zoneFilter=''; clusterFilter=''; dateFrom=''; dateTo='';
-  zoneSelect.value=''; clusterSelect.value=''; dateFromEl.value=''; dateToEl.value='';
-  updateClusterOptions(window._allClusters||[]);
-  loadSummary();
-};
-
-// ---- upload wiring ----
-dropzone.onclick = () => fileInput.click();
-dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
-dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
-dropzone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropzone.classList.remove('drag');
-  if(e.dataTransfer.files.length) doUpload(e.dataTransfer.files[0]);
+// Small helper because getElementById does not support hyphenated tab names well
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('nav-tab') && e.target.dataset.tab) {
+    qsa('.nav-tab').forEach(b => b.classList.remove('active'));
+    qsa('.tab-panel').forEach(p => p.classList.remove('active'));
+    e.target.classList.add('active');
+    const panel = document.getElementById('tab-' + e.target.dataset.tab);
+    if (panel) panel.classList.add('active');
+  }
 });
-fileInput.onchange = e => { if(e.target.files.length) doUpload(e.target.files[0]); };
 
-async function doUpload(file){
-  uploadMsg.textContent = 'Uploading ' + file.name + ' …';
-  uploadMsg.className = 'msg';
-  const fd = new FormData();
-  fd.append('file', file);
-  try{
-    const res = await fetch(API + '/api/upload', { method: 'POST', body: fd });
-    const data = await res.json();
-    if(!res.ok) throw new Error(data.error || 'Upload failed');
-    uploadMsg.textContent = `Added ${data.rowsInserted} rows from "${data.sheetName}" sheet.`;
-    uploadMsg.className = 'msg ok';
-    await refreshAll();
-  }catch(err){
-    uploadMsg.textContent = 'Error: ' + err.message;
-    uploadMsg.className = 'msg err';
+// ============================================================
+// Filters API
+// ============================================================
+async function loadFilters() {
+  try {
+    const data = await apiFetch('/api/filters');
+    state.filters = data;
+    populateZoneDropdowns();
+    populateClusterDropdown();
+  } catch (err) {
+    console.warn('Could not load filters:', err.message);
   }
 }
 
-// ---- downloads ----
-document.getElementById('downloadXlsx').onclick = () => {
-  window.location = API + '/api/download?' + qs({from:dateFrom,to:dateTo,zone:zoneFilter,cluster:clusterFilter,format:'xlsx'});
-};
-document.getElementById('downloadCsv').onclick = () => {
-  window.location = API + '/api/download?' + qs({from:dateFrom,to:dateTo,zone:zoneFilter,cluster:clusterFilter,format:'csv'});
-};
+function populateZoneDropdowns() {
+  const zones = state.filters.zones || [];
+  const makeOptions = (selected) =>
+    '<option value="">All Zones</option>' +
+    zones.map(z => `<option value="${z}"${z===selected?' selected':''}>${z}</option>`).join('');
 
-refreshAll();
+  qs('s-zone').innerHTML = makeOptions(state.summaryFilters.zone);
+  qs('p-zone').innerHTML = makeOptions(state.pivotFilters.zone);
+}
+
+function populateClusterDropdown() {
+  const clusters = state.filters.clusters || [];
+  const zone = state.pivotFilters.zone;
+  // If a zone is selected we can't filter clusters server-side here because
+  // we don't have zone→cluster mapping on the client. Show all clusters.
+  // (The server will filter correctly anyway.)
+  qs('p-cluster').innerHTML =
+    '<option value="">All Clusters</option>' +
+    clusters.map(c => `<option value="${c}"${c===state.pivotFilters.cluster?' selected':''}>${c}</option>`).join('');
+}
+
+// ============================================================
+// Auth
+// ============================================================
+function setAuthUI(user) {
+  // Show/hide login vs upload panel
+  qs('login-panel').style.display  = user ? 'none'  : 'block';
+  qs('upload-panel').style.display = user ? 'block' : 'none';
+
+  // Nav badge
+  const badge = qs('auth-badge');
+  if (user) {
+    qs('auth-name').textContent = user.name || user.username;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+async function restoreSession() {
+  const token = sessionStorage.getItem('ct_auth_token');
+  if (!token) return;
+  try {
+    const user = await apiFetch('/api/auth/me', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    state.auth = { token, user };
+    setAuthUI(user);
+  } catch {
+    sessionStorage.removeItem('ct_auth_token');
+  }
+}
+
+function initAuth() {
+  // Login form submission
+  const loginBtn = qs('login-btn');
+  const loginErr = qs('login-error');
+
+  async function doLogin() {
+    const username = qs('login-username').value.trim();
+    const password = qs('login-password').value;
+    if (!username || !password) {
+      loginErr.textContent = 'Please enter your username and password.';
+      loginErr.classList.add('show');
+      return;
+    }
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Signing in…';
+    loginErr.classList.remove('show');
+    try {
+      const data = await apiFetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      state.auth = { token: data.token, user: data.user };
+      sessionStorage.setItem('ct_auth_token', data.token);
+      qs('login-password').value = '';
+      setAuthUI(data.user);
+      await loadUploadHistory();
+    } catch (err) {
+      loginErr.textContent = err.message;
+      loginErr.classList.add('show');
+    } finally {
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Sign In';
+    }
+  }
+
+  loginBtn.addEventListener('click', doLogin);
+  qs('login-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  qs('login-username').addEventListener('keydown', e => {
+    if (e.key === 'Enter') qs('login-password').focus();
+  });
+
+  // Logout
+  qs('logout-btn').addEventListener('click', async () => {
+    try { await apiFetch('/api/auth/logout', { method: 'POST' }); } catch {}
+    state.auth = { token: null, user: null };
+    sessionStorage.removeItem('ct_auth_token');
+    setAuthUI(null);
+  });
+}
+
+// ============================================================
+// Upload history
+// ============================================================
+async function loadUploadHistory() {
+  try {
+    const uploads = await apiFetch('/api/uploads');
+    renderUploadHistory(uploads);
+  } catch (err) {
+    qs('upload-history-body').innerHTML =
+      `<tr><td colspan="5" style="color:var(--red);padding:16px">${err.message}</td></tr>`;
+  }
+}
+
+function renderUploadHistory(uploads) {
+  const tbody = qs('upload-history-body');
+  if (!uploads.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--muted)">No uploads yet — upload a file to get started.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = uploads.map(u => {
+    const datesStr = (u.dates || []).join(', ');
+    const datesTruncated = datesStr.length > 80 ? datesStr.slice(0, 77) + '…' : datesStr;
+    return `<tr>
+      <td style="font-weight:600">${escHtml(u.filename)}</td>
+      <td style="color:var(--muted);font-size:12px">${fmtTs(u.uploaded_at)}</td>
+      <td class="dates-cell" title="${escHtml(datesStr)}">${escHtml(datesTruncated)}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${fmtNum(u.record_count)}</td>
+      <td style="text-align:right">
+        <button class="btn btn-danger btn-sm" onclick="deleteUpload(${u.id})">Delete</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function deleteUpload(id) {
+  if (!confirm('Delete this upload and all its records? This cannot be undone.')) return;
+  try {
+    await apiFetch(`/api/uploads/${id}`, { method: 'DELETE' });
+    await Promise.all([loadUploadHistory(), loadFilters(), loadSummary(), loadPivot()]);
+  } catch (err) {
+    alert('Delete failed: ' + err.message);
+  }
+}
+
+function escHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ============================================================
+// Upload: drag-and-drop + button
+// ============================================================
+function initUpload() {
+  const dropZone  = qs('drop-zone');
+  const fileInput = qs('file-input');
+  const fileInfo  = qs('upload-file-info');
+  const fileName  = qs('upload-file-name');
+  const uploadBtn = qs('upload-btn');
+
+  let selectedFile = null;
+
+  dropZone.addEventListener('click', () => fileInput.click());
+
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+  dropZone.addEventListener('dragleave', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+  });
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) setSelectedFile(file);
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) setSelectedFile(fileInput.files[0]);
+  });
+
+  function setSelectedFile(file) {
+    selectedFile = file;
+    fileName.textContent = file.name;
+    fileInfo.style.display = 'flex';
+    uploadBtn.disabled = false;
+    hideAlerts();
+  }
+
+  uploadBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<span class="spinner"></span> Uploading…';
+    hideAlerts();
+
+    const fd = new FormData();
+    fd.append('file', selectedFile);
+
+    try {
+      const data = await apiFetch('/api/upload', { method: 'POST', body: fd });
+      showSuccess(
+        `Successfully uploaded <strong>${escHtml(selectedFile.name)}</strong>. ` +
+        `${fmtNum(data.record_count)} records imported for dates: ${(data.dates || []).join(', ')}.`
+      );
+      selectedFile = null;
+      fileInput.value = '';
+      fileInfo.style.display = 'none';
+      uploadBtn.disabled = true;
+      // Refresh everything
+      await Promise.all([loadFilters(), loadUploadHistory(), loadSummary(), loadPivot()]);
+    } catch (err) {
+      showError('Upload failed: ' + err.message);
+    } finally {
+      uploadBtn.disabled = false;
+      uploadBtn.innerHTML = 'Upload';
+    }
+  });
+
+  function hideAlerts() {
+    qs('upload-success').classList.remove('show');
+    qs('upload-error').classList.remove('show');
+  }
+  function showSuccess(html) {
+    const el = qs('upload-success');
+    el.innerHTML = html;
+    el.classList.add('show');
+  }
+  function showError(msg) {
+    const el = qs('upload-error');
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+}
+
+// ============================================================
+// CT Summary
+// ============================================================
+async function loadSummary() {
+  const tbody = qs('summary-tbody');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="9"><span class="spinner spinner-dark"></span> Loading…</td></tr>';
+
+  try {
+    const q = buildQuery({
+      dateFrom: state.summaryFilters.dateFrom,
+      dateTo:   state.summaryFilters.dateTo,
+      zone:     state.summaryFilters.zone,
+    });
+    const rows = await apiFetch('/api/summary' + q);
+    state.summaryRows = rows;
+    renderSummaryTable(rows);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="9" style="color:var(--red);padding:24px;text-align:center">${err.message}</td></tr>`;
+  }
+}
+
+function renderSummaryTable(rows) {
+  const tbody = qs('summary-tbody');
+
+  if (!rows.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="9">
+          <div class="empty-state">
+            <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <p>No data yet — upload a file first, or adjust your filters.</p>
+          </div>
+        </td>
+      </tr>`;
+    qs('s-row-count').textContent = '';
+    return;
+  }
+
+  const levelIndent = { total: 0, zone: 0, cluster: 1, region: 2, unit: 3, branch: 4 };
+
+  const html = rows.map(row => {
+    const indent = levelIndent[row.level] ?? 0;
+    const isBranch = row.level === 'branch';
+    const branchClass = isBranch && !state.showBranches ? 'hidden-branch' : '';
+
+    const entityName = row.level === 'branch'
+      ? capitalize(row.name)
+      : (row.name || '—');
+
+    // On-time and finpage use standard thresholds; not_tagged is reversed
+    const otClass  = pctClass(row.on_time_pct, false);
+    const fpClass  = pctClass(row.finpage_pct, false);
+    const ntClass  = pctClass(row.not_tagged_pct, true);
+
+    return `<tr class="level-${row.level} ${branchClass}">
+      <td class="entity-cell indent-${indent}">${escHtml(entityName)}</td>
+      <td>${fmtNum(row.total_centers)}</td>
+      <td class="${otClass}">${fmtPct(row.on_time_pct)}</td>
+      <td class="${fpClass}">${fmtPct(row.finpage_pct)}</td>
+      <td class="${ntClass}">${fmtPct(row.not_tagged_pct)}</td>
+      <td>${fmtPct(row.A_pct)}</td>
+      <td>${fmtPct(row.B_pct)}</td>
+      <td>${fmtPct(row.C_pct)}</td>
+      <td>${fmtNum(row.ftod_yes_count)}</td>
+    </tr>`;
+  }).join('');
+
+  tbody.innerHTML = html;
+
+  const nonBranchCount = rows.filter(r => r.level !== 'branch').length;
+  qs('s-row-count').textContent = `${nonBranchCount} entities`;
+}
+
+function initSummaryFilters() {
+  qs('s-apply-btn').addEventListener('click', () => {
+    state.summaryFilters.dateFrom = qs('s-date-from').value;
+    state.summaryFilters.dateTo   = qs('s-date-to').value;
+    state.summaryFilters.zone     = qs('s-zone').value;
+    loadSummary();
+  });
+
+  qs('toggle-branches-btn').addEventListener('click', () => {
+    state.showBranches = !state.showBranches;
+    qs('toggle-branches-btn').textContent = state.showBranches ? 'Hide Branches' : 'Show Branches';
+    // Toggle visibility of all branch rows
+    qsa('tr.hidden-branch, tr.level-branch', qs('summary-tbody')).forEach(tr => {
+      if (state.showBranches) {
+        tr.classList.remove('hidden-branch');
+      } else {
+        tr.classList.add('hidden-branch');
+      }
+    });
+    // Re-render is simpler if branches already hidden class is managed above
+    // but we need to re-render to pick up state.showBranches for new data too
+    if (state.summaryRows.length) {
+      renderSummaryTable(state.summaryRows);
+    }
+  });
+}
+
+// ============================================================
+// Daily Pivot
+// ============================================================
+async function loadPivot() {
+  const tbody = qs('pivot-tbody');
+  const thead = qs('pivot-thead');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="2"><span class="spinner spinner-dark"></span> Loading…</td></tr>';
+  thead.innerHTML = '';
+
+  try {
+    const q = buildQuery({
+      dateFrom: state.pivotFilters.dateFrom,
+      dateTo:   state.pivotFilters.dateTo,
+      zone:     state.pivotFilters.zone,
+      cluster:  state.pivotFilters.cluster,
+    });
+    const data = await apiFetch('/api/daily-pivot' + q);
+    state.pivotData = data;
+    renderPivotTable(data);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="2" style="color:var(--red);padding:24px;text-align:center">${err.message}</td></tr>`;
+  }
+}
+
+function renderPivotTable({ dates, rows }) {
+  const thead = qs('pivot-thead');
+  const tbody = qs('pivot-tbody');
+
+  if (!dates.length || !rows.length) {
+    thead.innerHTML = '';
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="2">
+          <div class="empty-state">
+            <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <p>No data yet — upload a file first, or adjust your filters.</p>
+          </div>
+        </td>
+      </tr>`;
+    return;
+  }
+
+  const metric  = state.pivotMetric;
+  const compare = state.compareMode;
+  const isCount = metric === 'customers';
+
+  // Header
+  thead.innerHTML = `<tr>
+    <th class="entity-col">Entity</th>
+    ${dates.map(d => `<th>${escHtml(fmtDate(d))}</th>`).join('')}
+  </tr>`;
+
+  // Body
+  const levelIndent = { total: '', zone: '', cluster: '&nbsp;&nbsp;&nbsp;&nbsp;' };
+  const html = rows.map(row => {
+    const prefix = levelIndent[row.level] || '';
+    const entityName = row.level === 'branch'
+      ? capitalize(row.name)
+      : (row.name || '—');
+
+    const dateCells = dates.map(date => {
+      const cell = row.byDate[date];
+      if (!cell) return `<td class="null-cell">—</td>`;
+
+      if (compare && !isCount) {
+        // Compare mode: show on_time_pct and finpage_pct stacked
+        const otVal = cell.on_time_pct;
+        const fpVal = cell.finpage_pct;
+        const otCls = pctClass(otVal, false);
+        const fpCls = pctClass(fpVal, false);
+        // Use dominant class for cell background
+        const domCls = otCls || fpCls || '';
+        return `<td class="${domCls}">
+          <div class="compare-cell">
+            <span class="cline" title="On-Time">OT: ${fmtPct(otVal)}</span>
+            <span class="cline" title="Finpage">FP: ${fmtPct(fpVal)}</span>
+          </div>
+        </td>`;
+      }
+
+      const val = cell[metric];
+      let display, cls;
+
+      if (metric === 'on_time_pct')    { display = fmtPct(val); cls = pctClass(val, false); }
+      else if (metric === 'finpage_pct')    { display = fmtPct(val); cls = pctClass(val, false); }
+      else if (metric === 'not_tagged_pct') { display = fmtPct(val); cls = pctClass(val, true); }
+      else { display = fmtNum(val); cls = ''; }
+
+      return `<td class="${cls}">${display}</td>`;
+    }).join('');
+
+    return `<tr class="level-${row.level}">
+      <td class="entity-col">${prefix}${escHtml(entityName)}</td>
+      ${dateCells}
+    </tr>`;
+  }).join('');
+
+  tbody.innerHTML = html;
+}
+
+function initPivotFilters() {
+  qs('p-apply-btn').addEventListener('click', () => {
+    state.pivotFilters.dateFrom = qs('p-date-from').value;
+    state.pivotFilters.dateTo   = qs('p-date-to').value;
+    state.pivotFilters.zone     = qs('p-zone').value;
+    state.pivotFilters.cluster  = qs('p-cluster').value;
+    loadPivot();
+  });
+
+  // Metric radio buttons
+  qsa('input[name="pivot-metric"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      state.pivotMetric = radio.value;
+      if (state.pivotData.dates.length) renderPivotTable(state.pivotData);
+    });
+  });
+
+  // Compare mode
+  qs('compare-mode-chk').addEventListener('change', e => {
+    state.compareMode = e.target.checked;
+    if (state.pivotData.dates.length) renderPivotTable(state.pivotData);
+  });
+}
+
+// ============================================================
+// Bootstrap
+// ============================================================
+async function init() {
+  initAuth();
+  initUpload();
+  initSummaryFilters();
+  initPivotFilters();
+
+  // Restore session first so apiFetch has token before other calls
+  await restoreSession();
+
+  await loadFilters();
+  await Promise.all([
+    loadUploadHistory(),
+    loadSummary(),
+    loadPivot(),
+  ]);
+}
+
+init().catch(err => console.error('Init error:', err));
 </script>
 </body>
 </html>

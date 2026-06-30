@@ -1,4 +1,9 @@
 node_modules/
+data/db.json
+data/users.json
 data/*.db
 .env
 .DS_Store
+logs/
+tools/nssm/
+*.log
