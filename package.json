@@ -1,0 +1,20 @@
+{
+  "name": "ct-dashboard",
+  "version": "1.0.0",
+  "description": "Center Quality daily summary dashboard with Excel upload and SQLite backend",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
+    "xlsx": "^0.18.5",
+    "better-sqlite3": "^11.3.0",
+    "cors": "^2.8.5"
+  },
+  "license": "ISC"
+}
