@@ -1,81 +1,214 @@
-# Center Quality — Team Dashboard
+# Svatantra — Center Quality CT Dashboard
 
-A small full-stack web app: upload Excel files, data gets stored in a real
-SQLite database on the server, and your whole team sees the same shared
-summary dashboard with date/zone/cluster filters and download buttons.
+A full-stack web dashboard that automates the generation of quality summary reports by processing uploaded raw backend data dumps. Admins upload a daily Excel export; the whole team sees the same live, filterable, hierarchical dashboard.
 
-- Backend: Node.js + Express + better-sqlite3 (SQLite — a real file-based database, no separate database server needed)
-- Frontend: plain HTML/CSS/JS, served by the same backend
-- Storage: every upload is appended to the database (not overwritten), so the dashboard grows over time as new daily files come in
+## Tech Stack
 
-## Run it locally (to test before deploying)
+- **Backend** — Node.js + Express, JSON file database (`data/db.json`)
+- **Frontend** — Vanilla HTML / CSS / JS, served by the same backend (no build step)
+- **File processing** — `xlsx` library; reads only the `SFO_wise_Summary` sheet, all other tabs are ignored
+- **Auth** — scrypt-hashed passwords, in-memory Bearer token sessions (8-hour expiry)
 
-Requires Node.js 18 or newer.
+---
 
+## Project Structure
+
+```
+CT---Dashboard/
+├── server/
+│   └── index.js          # Express server — API routes, sheet parsing, aggregation, auth
+├── public/
+│   ├── index.html        # Single-page dashboard (Upload, CT Summary, Daily Pivot tabs)
+│   └── logo.png          # Svatantra brand logo
+├── scripts/
+│   └── add-user.js       # CLI tool to manage admin users
+├── data/                 # Created at runtime (git-ignored)
+│   ├── db.json           # Uploaded records store
+│   └── users.json        # Hashed admin credentials
+├── deploy.sh             # Linux deployment script (systemd)
+├── deploy.ps1            # Windows deployment script (NSSM)
+└── package.json
+```
+
+---
+
+## Input Data
+
+**Upload source:** Raw Excel dump exported from the backend.
+
+**Example filename:** `CenterMeeting_Report_CT_2026-06-29_sfo.xlsx`
+
+**Required sheet:** `SFO_wise_Summary` — all other tabs are stripped and ignored.
+
+**Sheet columns processed:**
+
+| Column | Description |
+|---|---|
+| `demand_date` | Date of the record (DD-MM-YYYY) |
+| `branch_name` | Branch (leaf entity) |
+| `zone_name` | Zone |
+| `cluster_name` | Cluster |
+| `region_name` | Region |
+| `unit_name` | Unit |
+| `sfo_handling_name` | SFO officer name |
+| `total_centers` | Total center count |
+| `centers_reached_on_time` | Centers reached on time |
+| `finpage_yes_count` | Finpage entry passed count |
+| `centers_not_tagged` | Centers not tagged |
+| `A`, `B`, `C` | Customer category counts |
+| `ftod_yes_count` | FTOD count |
+
+Percentages are computed server-side from summed raw counts — never averaged from the `%` columns in the sheet.
+
+---
+
+## Dashboard Tabs
+
+### Upload *(admin only — requires login)*
+- Drag-and-drop or click-to-browse file upload
+- Re-uploading the same date replaces existing data for that date (deduplication)
+- Upload history with per-upload delete
+
+### CT Summary
+- Hierarchical table: **Total → Zone → Cluster → Region → Unit → Branch**
+- Columns: Centers, On-Time %, Finpage %, Not Tagged %, A%, B%, C%, FTOD Count
+- Colour-coded cells: green ≥ 70%, amber 55–69%, red < 55% (Not Tagged % reversed)
+- Toggle to show/hide branch-level rows
+- Filter by date range and zone
+
+### Daily Pivot
+- Dates as columns, Zone / Cluster hierarchy as rows
+- Metric selector: On-Time % / Finpage % / Not Tagged % / Center Count
+- Compare Mode: stacks On-Time % + Finpage % side-by-side in each date cell
+- Horizontally scrollable with sticky entity column
+- Filter by date range, zone, and cluster
+
+---
+
+## Run Locally
+
+Requires **Node.js 18+**.
+
+```bash
 npm install
 npm start
+# Open http://localhost:3000
+```
 
-Then open http://localhost:3000 in your browser. Upload your Excel file and the dashboard will populate.
+Default admin credentials (created on first run):
 
-## Deploy it for your team (free options)
+```
+Username: admin
+Password: admin@123
+```
 
-You want a real URL your whole team can open, so the app needs to run somewhere other than your laptop. Two good free options:
+**Change the default password immediately:**
 
-### Option A — Render.com (recommended, easiest)
+```bash
+node scripts/add-user.js --password admin
+```
 
-1. Create a free account at render.com
-2. Push this folder to a GitHub repository
-3. In Render: New → Web Service → connect your repo
-4. Settings:
-   - Build Command: npm install
-   - Start Command: npm start
-   - Instance type: Free
-5. Click Deploy. Render gives you a URL like https://your-app.onrender.com — share that with your team.
+---
 
-Note: the free tier "sleeps" after inactivity and spins back up on the next visit (takes about 30 seconds). Fine for internal team use; upgrade to a paid instance if you want it always-on.
+## User Management
 
-### Option B — Railway.app
+```bash
+# Add a new admin user (interactive)
+node scripts/add-user.js
 
-1. Create a free account at railway.app
-2. New Project → Deploy from GitHub repo
-3. Railway auto-detects Node.js, runs npm install and npm start
-4. It gives you a public URL automatically
+# List all users
+node scripts/add-user.js --list
 
-### Important: persistent storage
+# Change a user's password
+node scripts/add-user.js --password <username>
 
-Both Render and Railway free tiers use ephemeral disks by default, meaning the SQLite database file could reset if the service restarts. For a team tool that needs data to stick around long-term, do one of:
+# Delete a user
+node scripts/add-user.js --delete <username>
+```
 
-- Render: add a free Persistent Disk (Dashboard → your service → Disks → Add Disk, mount path /opt/render/project/src/data)
-- Railway: add a Volume (Project → your service → Volumes → mount at /app/data)
+---
 
-This makes sure uploaded data survives restarts and redeploys.
+## Deploy to a VM
 
-## How your team uses it day to day
+### Linux (Ubuntu / Debian / RHEL / CentOS / Amazon Linux)
 
-1. Open the shared URL
-2. Drag a new daily Excel file onto the upload box (it auto-detects the Input-CT sheet, or the first sheet if that's not found)
-3. The new rows are added to the database — nothing from prior uploads is deleted
-4. Everyone who opens the link sees the same combined data and can filter by date range, zone, cluster
-5. Anyone can download the currently filtered view as xlsx or csv
-6. The Upload history panel lets you delete a specific upload if a wrong file was added, or clear everything via the API if you need a full reset
+```bash
+# Copy project files to the VM, then:
+sudo bash deploy.sh
 
-## Project structure
+# Custom port:
+sudo PORT=8080 bash deploy.sh
+```
 
-ct-dashboard/
-  package.json
-  server/
-    index.js (Express server, SQLite schema, API routes)
-  public/
-    index.html (Frontend dashboard, no build step needed)
-  data/
-    app.db (SQLite database file, created automatically)
+The script will:
+1. Install Node.js 20 LTS via NodeSource (if not present)
+2. Create a locked-down `ct-dashboard` system user
+3. Run `npm install --omit=dev`
+4. Create and enable a **systemd service** (auto-starts on reboot, restarts on crash)
+5. Open the port in `ufw` or `firewalld`
+6. Run a health check
 
-## API reference
+**Post-deploy commands:**
 
-- POST /api/upload — multipart form upload (file field), inserts rows
-- GET /api/summary?from=&to=&zone=&cluster= — aggregated KPIs and tables
-- GET /api/filters — available zones, clusters, date range
-- GET /api/download?from=&to=&zone=&cluster=&format=xlsx|csv — export
-- GET /api/uploads — upload history
-- DELETE /api/uploads/:id — remove one upload's data
-- DELETE /api/clear-all — wipe everything
+```bash
+systemctl status ct-dashboard
+journalctl -u ct-dashboard -f      # live logs
+systemctl restart ct-dashboard
+```
+
+---
+
+### Windows (10 / 11 / Server 2016+)
+
+Open **PowerShell as Administrator**, then:
+
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force
+.\deploy.ps1
+
+# Custom port:
+.\deploy.ps1 -Port 8080
+```
+
+The script will:
+1. Install Node.js 20 LTS via `winget` (if not present)
+2. Run `npm install --omit=dev`
+3. Download **NSSM** (Non-Sucking Service Manager) and register the app as a **Windows Service** (auto-starts on boot, restarts on crash, log rotation at 10 MB)
+4. Add a Windows Firewall inbound rule for the port
+5. Run a health check
+
+**Post-deploy commands:**
+
+```powershell
+Get-Service CTDashboard
+Restart-Service CTDashboard
+Get-Content .\logs\stdout.log -Tail 50 -Wait    # live logs
+```
+
+---
+
+## API Reference
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `POST` | `/api/auth/login` | — | `{username, password}` → `{token, user}` |
+| `POST` | `/api/auth/logout` | Bearer | Invalidate session |
+| `GET` | `/api/auth/me` | Bearer | Current session info |
+| `POST` | `/api/upload` | Bearer | Upload Excel file (multipart `file` field) |
+| `GET` | `/api/summary` | — | Hierarchical aggregated data. Query: `dateFrom`, `dateTo`, `zone`, `cluster`, `region` |
+| `GET` | `/api/daily-pivot` | — | Date-as-columns pivot. Query: `dateFrom`, `dateTo`, `zone`, `cluster` |
+| `GET` | `/api/filters` | — | Available dates, zones, clusters, regions, units |
+| `GET` | `/api/uploads` | — | Upload history (newest first) |
+| `DELETE` | `/api/uploads/:id` | Bearer | Delete an upload and all its records |
+| `GET` | `/api/health` | — | `{"status":"ok"}` |
+
+---
+
+## Security Notes
+
+- Passwords hashed with `crypto.scryptSync` (N=16384, r=8, p=1) — no external packages
+- `crypto.timingSafeEqual` used for both password and session token comparison
+- Session tokens are 32 random bytes (256-bit entropy) via `crypto.randomBytes`
+- Sessions are in-memory and expire after 8 hours; clearing on server restart
+- `data/db.json` and `data/users.json` are git-ignored and never committed
+- Only `POST /api/upload` and `DELETE /api/uploads/:id` require authentication; all read endpoints are public
