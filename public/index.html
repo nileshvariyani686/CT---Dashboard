@@ -213,3 +213,111 @@ function render(data){
   `).join('') || '<tr><td colspan="8" class="empty">No data for this filter</td></tr>';
 
   document.getElementById('clusterRowCount').textContent = '(' + data.byCluster.length + ' clusters)';
+  document.getElementById('clusterTableBody').innerHTML = data.byCluster.map(r=>`
+    <tr>
+      <td>${r.zone_name||'—'}</td>
+      <td>${r.cluster_name||'—'}</td>
+      <td class="num">${(r.total_centers||0).toLocaleString()}</td>
+      <td class="num">${(r.reached_on_time||0).toLocaleString()}</td>
+      <td class="num">${r.on_time_pct}%</td>
+      <td class="num">${(r.finpage_yes||0).toLocaleString()}</td>
+      <td class="num">${r.finpage_pct}%</td>
+      <td class="num">${(r.total_customers||0).toLocaleString()}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="8" class="empty">No data for this filter</td></tr>';
+
+  document.getElementById('dailyRowCount').textContent = '(' + data.byDay.length + ' days)';
+  document.getElementById('dailyTableBody').innerHTML = data.byDay.map(r=>`
+    <tr>
+      <td>${r.demand_date}</td>
+      <td class="num">${(r.total_centers||0).toLocaleString()}</td>
+      <td class="num">${(r.reached_on_time||0).toLocaleString()}</td>
+      <td class="num">${r.on_time_pct}%</td>
+      <td class="num">${(r.finpage_yes||0).toLocaleString()}</td>
+      <td class="num">${r.finpage_pct}%</td>
+      <td class="num">${(r.total_customers||0).toLocaleString()}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="7" class="empty">No data for this filter</td></tr>';
+}
+
+async function loadUploadHistory(){
+  const res = await fetch(API + '/api/uploads');
+  const rows = await res.json();
+  const el = document.getElementById('uploadHistory');
+  if(!rows.length){
+    el.innerHTML = '<div class="empty">No uploads yet</div>';
+    return;
+  }
+  el.innerHTML = rows.map(r => `
+    <div class="uploadItem">
+      <span>${r.filename} — ${r.sheet_name} — ${r.row_count} rows — ${new Date(r.uploaded_at).toLocaleString()}</span>
+      <button data-id="${r.id}">Delete</button>
+    </div>
+  `).join('');
+  el.querySelectorAll('button').forEach(b => {
+    b.onclick = async () => {
+      await fetch(API + '/api/uploads/' + b.dataset.id, { method: 'DELETE' });
+      await refreshAll();
+    };
+  });
+}
+
+async function refreshAll(){
+  await loadFilters();
+  await loadSummary();
+  await loadUploadHistory();
+}
+
+// ---- filter wiring ----
+zoneSelect.onchange = () => { zoneFilter = zoneSelect.value; updateClusterOptions(window._allClusters||[]); clusterFilter=''; clusterSelect.value=''; loadSummary(); };
+clusterSelect.onchange = () => { clusterFilter = clusterSelect.value; loadSummary(); };
+dateFromEl.onchange = () => { dateFrom = dateFromEl.value; loadSummary(); };
+dateToEl.onchange = () => { dateTo = dateToEl.value; loadSummary(); };
+document.getElementById('clearFilters').onclick = () => {
+  zoneFilter=''; clusterFilter=''; dateFrom=''; dateTo='';
+  zoneSelect.value=''; clusterSelect.value=''; dateFromEl.value=''; dateToEl.value='';
+  updateClusterOptions(window._allClusters||[]);
+  loadSummary();
+};
+
+// ---- upload wiring ----
+dropzone.onclick = () => fileInput.click();
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag');
+  if(e.dataTransfer.files.length) doUpload(e.dataTransfer.files[0]);
+});
+fileInput.onchange = e => { if(e.target.files.length) doUpload(e.target.files[0]); };
+
+async function doUpload(file){
+  uploadMsg.textContent = 'Uploading ' + file.name + ' …';
+  uploadMsg.className = 'msg';
+  const fd = new FormData();
+  fd.append('file', file);
+  try{
+    const res = await fetch(API + '/api/upload', { method: 'POST', body: fd });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Upload failed');
+    uploadMsg.textContent = `Added ${data.rowsInserted} rows from "${data.sheetName}" sheet.`;
+    uploadMsg.className = 'msg ok';
+    await refreshAll();
+  }catch(err){
+    uploadMsg.textContent = 'Error: ' + err.message;
+    uploadMsg.className = 'msg err';
+  }
+}
+
+// ---- downloads ----
+document.getElementById('downloadXlsx').onclick = () => {
+  window.location = API + '/api/download?' + qs({from:dateFrom,to:dateTo,zone:zoneFilter,cluster:clusterFilter,format:'xlsx'});
+};
+document.getElementById('downloadCsv').onclick = () => {
+  window.location = API + '/api/download?' + qs({from:dateFrom,to:dateTo,zone:zoneFilter,cluster:clusterFilter,format:'csv'});
+};
+
+refreshAll();
+</script>
+</body>
+</html>
